@@ -16,7 +16,7 @@ class VideoPlayerApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        body: VideoPlayerPage(),
+        body: VideoPlayer(),
       ),
     );
   }

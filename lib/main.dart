@@ -106,8 +106,7 @@ class PrimaryScreen extends StatelessWidget {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) =>
-                        const SinglePlayerMultipleVideoScreen(),
+                    builder: (context) => const SinglePlayerMultipleVideoScreen(),
                   ),
                 );
               },
@@ -122,8 +121,7 @@ class PrimaryScreen extends StatelessWidget {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) =>
-                      const MultiplePlayerMultipleVideoScreen(),
+                  builder: (context) => const MultiplePlayerMultipleVideoScreen(),
                 ),
               );
             },

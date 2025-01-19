@@ -28,16 +28,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   List<Map<String, String>> playlist = []; // 存储播放列表，包含标题与链接
 
-  int currentIndex = -1; // 当前播放索引
+  int currentIndex = 0; // 当前播放索引
+
+  late ScrollController _scrollController;
+
+  double scrollOffset = 0.0; // 用于保存滚动位置
 
   @override
   void initState() {
+    _scrollController = ScrollController(initialScrollOffset: scrollOffset); // 初始化滚动控制器
     super.initState();
   }
 
   @override
   void dispose() {
     player.dispose();
+    _scrollController.dispose(); // 释放控制器资源
     super.dispose();
   }
 
@@ -142,7 +148,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           if (parsedPlaylist.isNotEmpty) {
             setState(() {
               playlist = parsedPlaylist;
-              currentIndex = -1; // 重置当前索引
             });
             loadPlaylistToPlayer(); // 加载到 Player 的播放列表
           } else {
@@ -267,15 +272,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 context: context,
                 builder: (context) {
                   return ListView.builder(
+                    controller: _scrollController,
                     itemCount: playlist.length,
                     itemBuilder: (context, index) {
                       final item = playlist[index];
                       final title = item['title']!;
                       return ListTile(
                         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        selected: currentIndex == index, // 检查当前索引是否选中
+                        selectedTileColor: Colors.black12.withAlpha(20), // 选中时的背景颜色
+                        selectedColor: Colors.blue,
                         onTap: () {
                           setState(() {
                             currentIndex = index; // 更新当前播放索引
+                            scrollOffset = _scrollController.offset; // 保存滚动偏移
                           });
                           player.jump(index); // 使用 media_kit 的跳转功能
                           Navigator.of(context).pop(); // 关闭 BottomSheet
@@ -285,6 +295,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   );
                 },
               );
+              // 滚动到当前选中项（确保 BottomSheet 构建完成后执行）
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_scrollController.hasClients) {
+                  _scrollController.jumpTo(scrollOffset);
+                }
+              });
             },
             icon: const Icon(Icons.view_list_rounded),
           ),

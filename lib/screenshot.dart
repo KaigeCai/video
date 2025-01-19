@@ -2,25 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
-import '../common/globals.dart';
-import '../common/sources/sources.dart';
-import '../common/widgets.dart';
+import 'common/globals.dart';
+import 'sources/sources.dart';
+import 'common/widgets.dart';
 
-class SinglePlayerSingleVideoScreen extends StatefulWidget {
-  const SinglePlayerSingleVideoScreen({super.key});
+class Screenshot extends StatefulWidget {
+  const Screenshot({super.key});
 
   @override
-  State<SinglePlayerSingleVideoScreen> createState() =>
-      _SinglePlayerSingleVideoScreenState();
+  State<Screenshot> createState() => _ScreenshotState();
 }
 
-class _SinglePlayerSingleVideoScreenState
-    extends State<SinglePlayerSingleVideoScreen> {
+class _ScreenshotState extends State<Screenshot> {
   late final Player player = Player();
   late final VideoController controller = VideoController(
     player,
     configuration: configuration.value,
   );
+
+  Image? image;
 
   @override
   void initState() {
@@ -36,20 +36,26 @@ class _SinglePlayerSingleVideoScreenState
   }
 
   List<Widget> get items => [
-        for (int i = 0; i < sources.length; i++)
-          ListTile(
-            title: Text(
-              'Video $i',
-              style: const TextStyle(
-                fontSize: 14.0,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: () {
-              player.open(Media(sources[i]));
+        const SizedBox(height: 16.0),
+        Center(
+          child: ElevatedButton(
+            onPressed: () async {
+              final screenshot = await player.screenshot();
+              if (screenshot != null) {
+                setState(() {
+                  image = Image.memory(screenshot);
+                });
+              }
             },
+            child: const Text('Screenshot'),
           ),
+        ),
+        const SizedBox(height: 16.0),
+        if (image != null)
+          Center(
+            child: image!,
+          ),
+        const SizedBox(height: 16.0),
       ];
 
   @override

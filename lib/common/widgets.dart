@@ -5,7 +5,7 @@ import 'package:file_picker/file_picker.dart';
 
 import 'package:media_kit/media_kit.dart';
 
-import '../common/sources/sources.dart';
+import '../sources/sources.dart';
 
 class TracksSelector extends StatefulWidget {
   final Player player;

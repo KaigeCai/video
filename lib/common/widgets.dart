@@ -1,11 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 
 import 'package:media_kit/media_kit.dart';
-
-import '../sources/sources.dart';
 
 class TracksSelector extends StatefulWidget {
   final Player player;
@@ -281,11 +278,7 @@ Future<void> showFilePicker(BuildContext context, Player player) async {
   final result = await FilePicker.platform.pickFiles(type: FileType.any);
   if (result?.files.isNotEmpty ?? false) {
     final file = result!.files.first;
-    if (kIsWeb) {
-      await player.open(Media(convertBytesToURL(file.bytes!)));
-    } else {
-      await player.open(Media(file.path!));
-    }
+    await player.open(Media(file.path!));
   }
 }
 

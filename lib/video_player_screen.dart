@@ -26,6 +26,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     configuration: configuration.value,
   );
 
+  List<Map<String, String>> playlist = []; // 存储播放列表，包含标题与链接
+
+  int currentIndex = -1; // 当前播放索引
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +39,31 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void dispose() {
     player.dispose();
     super.dispose();
+  }
+
+  /// 解析 m3u 文件内容并返回标题与链接列表
+  List<Map<String, String>> parseM3U(String content) {
+    final lines = content.split('\n');
+    List<Map<String, String>> items = [];
+    String? currentTitle;
+
+    for (var line in lines) {
+      line = line.trim();
+      if (line.startsWith('#EXTINF')) {
+        // 提取标题
+        final titleMatch = RegExp(r'#EXTINF:.*?,(.+)').firstMatch(line);
+        if (titleMatch != null) {
+          currentTitle = titleMatch.group(1);
+        }
+      } else if (line.isNotEmpty && !line.startsWith('#')) {
+        // 当前行是链接，将标题与链接保存
+        if (currentTitle != null) {
+          items.add({'title': currentTitle, 'url': line});
+          currentTitle = null; // 清空当前标题
+        }
+      }
+    }
+    return items;
   }
 
   Future<void> _saveScreenshot(Uint8List screenshot) async {
@@ -91,11 +120,40 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
+  /// 加载播放列表到 Player
+  void loadPlaylistToPlayer() {
+    final urls = playlist.map((item) => Media(item['url']!)).toList();
+    player.open(
+      Playlist(urls), // 使用 media_kit 提供的 Playlist 功能
+      play: true, // 自动播放
+    );
+  }
+
+  /// 打开文件选择器并解析 m3u 文件
   Future<void> showFilePicker(BuildContext context, Player player) async {
     final result = await FilePicker.platform.pickFiles(type: FileType.any);
     if (result?.files.isNotEmpty ?? false) {
       final file = result!.files.first;
-      await player.open(Media(file.path!));
+
+      if (file.path != null && file.extension == 'm3u') {
+        try {
+          final content = await File(file.path!).readAsString();
+          final parsedPlaylist = parseM3U(content);
+          if (parsedPlaylist.isNotEmpty) {
+            setState(() {
+              playlist = parsedPlaylist;
+              currentIndex = -1; // 重置当前索引
+            });
+            loadPlaylistToPlayer(); // 加载到 Player 的播放列表
+          } else {
+            Fluttertoast.showToast(msg: '播放列表为空或解析失败');
+          }
+        } catch (e) {
+          Fluttertoast.showToast(msg: '解析 m3u 文件失败: $e');
+        }
+      } else {
+        await player.open(Media(file.path!)); // 非 m3u 文件直接播放
+      }
     }
   }
 
@@ -203,7 +261,31 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ),
           IconButton(
             tooltip: '播放列表',
-            onPressed: () {},
+            onPressed: () {
+              /// 展示播放列表
+              showModalBottomSheet(
+                context: context,
+                builder: (context) {
+                  return ListView.builder(
+                    itemCount: playlist.length,
+                    itemBuilder: (context, index) {
+                      final item = playlist[index];
+                      final title = item['title']!;
+                      return ListTile(
+                        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        onTap: () {
+                          setState(() {
+                            currentIndex = index; // 更新当前播放索引
+                          });
+                          player.jump(index); // 使用 media_kit 的跳转功能
+                          Navigator.of(context).pop(); // 关闭 BottomSheet
+                        },
+                      );
+                    },
+                  );
+                },
+              );
+            },
             icon: const Icon(Icons.view_list_rounded),
           ),
           IconButton(

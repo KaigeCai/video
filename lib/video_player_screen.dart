@@ -126,13 +126,30 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
-  /// 加载播放列表到 Player
+  /// 加载播放列表到 Player 并设置循环播放
   void loadPlaylistToPlayer() {
     final urls = playlist.map((item) => Media(item['url']!)).toList();
     player.open(
       Playlist(urls), // 使用 media_kit 提供的 Playlist 功能
       play: true, // 自动播放
     );
+    
+    player.setPlaylistMode(PlaylistMode.loop);
+
+    // 监听播放列表变化，更新当前索引
+    player.stream.playlist.listen((playlistData) {
+      setState(() {
+        currentIndex = playlistData.index;
+      });
+    });
+
+    // 设置播放结束时的行为
+    player.stream.completed.listen((completed) {
+      if (completed) {
+        final nextIndex = (currentIndex + 1) % playlist.length;
+        player.jump(nextIndex); // 循环到下一个视频
+      }
+    });
   }
 
   /// 打开文件选择器并解析 m3u 文件
@@ -210,6 +227,58 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ),
       ),
     );
+  }
+
+  /// 打开文件夹并筛选视频文件
+  Future<void> openFolder(BuildContext context) async {
+    final result = await FilePicker.platform.getDirectoryPath();
+    if (result != null) {
+      final directory = Directory(result);
+
+      // 支持的视频格式
+      final videoExtensions = [
+        'mp4',
+        'avi',
+        'mkv',
+        'mov',
+        'webm',
+        'wmv',
+        'flv',
+        'mpeg',
+        'rmvb',
+        '3gp',
+      ];
+      final List<Map<String, String>> newPlaylist = [];
+
+      try {
+        // 遍历目录，筛选视频文件
+        final files = directory.listSync().whereType<File>().where(
+          (file) {
+            final extension = file.path.split('.').last.toLowerCase();
+            bool isKnownExtension = videoExtensions.contains(extension);
+            bool isNotM3u = extension != 'm3u';
+            bool isNotM3u8 = extension != 'm3u8';
+            return isKnownExtension && isNotM3u && isNotM3u8;
+          },
+        ).toList();
+
+        for (var file in files) {
+          final fileName = file.path.split(Platform.pathSeparator).last;
+          newPlaylist.add({'title': fileName, 'url': file.path});
+        }
+
+        if (newPlaylist.isNotEmpty) {
+          setState(() {
+            playlist.addAll(newPlaylist); // 添加到播放列表
+          });
+          loadPlaylistToPlayer(); // 加载新的播放列表到 Player
+        } else {
+          Fluttertoast.showToast(msg: '未找到支持的视频文件');
+        }
+      } catch (e) {
+        Fluttertoast.showToast(msg: '加载文件夹失败: $e');
+      }
+    }
   }
 
   @override
@@ -306,7 +375,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ),
           IconButton(
             tooltip: '打开文件夹',
-            onPressed: () {},
+            onPressed: () => openFolder(context),
             icon: const Icon(Icons.folder_copy),
           ),
         ],

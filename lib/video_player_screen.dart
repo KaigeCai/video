@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:window_manager/window_manager.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   const VideoPlayerScreen({super.key});
@@ -35,9 +37,34 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   double scrollOffset = 0.0; // 用于保存滚动位置
 
+  bool isVideoLandscape = false; // 标记当前视频是否为横屏
+
+  int screenWidth = 0;
+  int screenHeight = 0;
+
   @override
   void initState() {
-    _scrollController = ScrollController(initialScrollOffset: scrollOffset); // 初始化滚动控制器
+    _scrollController = ScrollController(initialScrollOffset: scrollOffset);
+
+    // 监听视频宽度变化
+    player.stream.width.listen((width) {
+      if (width != null) {
+        setState(() {
+          screenWidth = width;
+          isVideoLandscape = screenWidth >= screenHeight; // 更新横竖屏标识
+        });
+      }
+    });
+
+    // 监听视频高度变化
+    player.stream.height.listen((height) {
+      if (height != null) {
+        setState(() {
+          screenHeight = height;
+          isVideoLandscape = screenWidth >= screenHeight; // 更新横竖屏标识
+        });
+      }
+    });
     super.initState();
   }
 
@@ -250,6 +277,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         'rmvb',
         '3gp',
       ];
+
       final List<Map<String, String>> newPlaylist = [];
 
       try {
@@ -271,8 +299,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
         if (newPlaylist.isNotEmpty) {
           setState(() {
+            playlist.clear();
             playlist.addAll(newPlaylist); // 添加到播放列表
+            currentIndex = 0;
           });
+          player.stop();
           loadPlaylistToPlayer(); // 加载新的播放列表到 Player
         } else {
           Fluttertoast.showToast(msg: '未找到支持的视频文件');
@@ -299,6 +330,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: '播放模式',
+            onPressed: () {},
+            icon: Icon(Icons.play_arrow),
+          ),
+          IconButton(
+            tooltip: '字幕',
+            onPressed: () {},
+            icon: const Icon(Icons.subtitles),
+          ),
           IconButton(
             tooltip: '打开文件',
             onPressed: () => showFilePicker(context, player),
@@ -366,7 +407,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   );
                 },
               );
-              // 滚动到当前选中项（确保 BottomSheet 构建完成后执行）
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (_scrollController.hasClients) {
                   _scrollController.jumpTo(scrollOffset);
@@ -382,7 +422,50 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ),
         ],
       ),
-      body: Video(controller: controller),
+      body: Video(
+        controller: controller,
+        onEnterFullscreen: () async {
+          if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+            await windowManager.setFullScreen(true);
+            if (isVideoLandscape) {
+              // Handle landscape orientation
+              SystemChrome.setPreferredOrientations([
+                DeviceOrientation.landscapeRight,
+                DeviceOrientation.landscapeLeft,
+              ]);
+            } else {
+              // Handle portrait orientation
+              SystemChrome.setPreferredOrientations([
+                DeviceOrientation.portraitUp,
+                DeviceOrientation.portraitDown,
+              ]);
+            }
+          } else if (Platform.isAndroid || Platform.isIOS) {
+            // For mobile platforms
+            if (isVideoLandscape) {
+              SystemChrome.setPreferredOrientations([
+                DeviceOrientation.landscapeRight,
+                DeviceOrientation.landscapeLeft,
+              ]);
+            } else {
+              SystemChrome.setPreferredOrientations([
+                DeviceOrientation.portraitUp,
+                DeviceOrientation.portraitDown,
+              ]);
+            }
+            SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+          }
+        },
+        onExitFullscreen: () async {
+          if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+            await windowManager.setFullScreen(false);
+            await windowManager.restore();
+          } else if (Platform.isAndroid || Platform.isIOS) {
+            SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+            SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+          }
+        },
+      ),
     );
   }
 }

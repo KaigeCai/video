@@ -21,6 +21,7 @@ dependencies:
   http: ^1.2.2
   universal_platform: ^1.0.0+1
   web: ^1.1.0
+  window_manager: ^0.4.3
 
 dev_dependencies:
   flutter_test:

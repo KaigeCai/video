@@ -39,6 +39,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   bool isVideoLandscape = false; // 标记当前视频是否为横屏
 
+  bool isVolumeIncreased = false; // 用来跟踪音量状态，默认为false (默认音量)
+
   int screenWidth = 0;
   int screenHeight = 0;
 
@@ -408,6 +410,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               });
             },
             icon: const Icon(Icons.view_list_rounded),
+          ),
+          IconButton(
+            tooltip: '放大音量',
+            onPressed: () {
+              setState(() {
+                if (isVolumeIncreased) {
+                  player.setVolume(100.0);
+                } else {
+                  player.setVolume(200.0);
+                }
+                isVolumeIncreased = !isVolumeIncreased;
+              });
+            },
+            icon: const Icon(Icons.volume_up),
           ),
           IconButton(
             tooltip: '打开文件夹',

@@ -7,6 +7,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   const VideoPlayerScreen({super.key});
@@ -133,7 +134,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       Playlist(urls), // 使用 media_kit 提供的 Playlist 功能
       play: true, // 自动播放
     );
-    
+
     player.setPlaylistMode(PlaylistMode.loop);
 
     // 监听播放列表变化，更新当前索引
@@ -200,11 +201,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   style: const TextStyle(fontSize: 14.0),
                   decoration: const InputDecoration(
                     border: UnderlineInputBorder(),
-                    labelText: 'Video URI',
+                    labelText: '视频链接',
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter a URI';
+                      return '请输入视频链接';
                     }
                     return null;
                   },
@@ -218,7 +219,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         Navigator.of(context).maybePop();
                       }
                     },
-                    child: const Text('Play'),
+                    child: const Text('播放'),
                   ),
                 ),
               ],
@@ -231,10 +232,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   /// 打开文件夹并筛选视频文件
   Future<void> openFolder(BuildContext context) async {
+    await Permission.manageExternalStorage.request();
+    await Permission.storage.request();
     final result = await FilePicker.platform.getDirectoryPath();
     if (result != null) {
       final directory = Directory(result);
-
       // 支持的视频格式
       final videoExtensions = [
         'mp4',

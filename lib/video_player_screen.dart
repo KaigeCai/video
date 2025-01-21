@@ -65,7 +65,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         });
       }
     });
+
     player.setSubtitleTrack(SubtitleTrack.auto());
+    
     super.initState();
   }
 

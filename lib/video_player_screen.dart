@@ -67,7 +67,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     });
 
     player.setSubtitleTrack(SubtitleTrack.auto());
-    
+
     super.initState();
   }
 
@@ -171,6 +171,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     player.stream.playlist.listen((playlistData) {
       setState(() {
         currentIndex = playlistData.index;
+        player.setSubtitleTrack(SubtitleTrack.auto());
       });
     });
 

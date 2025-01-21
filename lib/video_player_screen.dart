@@ -65,6 +65,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         });
       }
     });
+    player.setSubtitleTrack(SubtitleTrack.auto());
     super.initState();
   }
 
@@ -330,16 +331,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: '播放模式',
-            onPressed: () {},
-            icon: Icon(Icons.play_arrow),
-          ),
-          IconButton(
-            tooltip: '字幕',
-            onPressed: () {},
-            icon: const Icon(Icons.subtitles),
-          ),
           IconButton(
             tooltip: '打开文件',
             onPressed: () => showFilePicker(context, player),

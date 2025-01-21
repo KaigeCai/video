@@ -9,6 +9,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -70,6 +71,68 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     player.setSubtitleTrack(SubtitleTrack.auto());
 
+    getLastOpenedPath().then((path) async {
+      if (path != null && File(path).existsSync()) {
+        // 如果文件存在，直接打开
+        if (path.endsWith('.m3u')) {
+          final content = await File(path).readAsString();
+          final parsedPlaylist = parseM3U(content);
+          if (parsedPlaylist.isNotEmpty) {
+            setState(() {
+              playlist = parsedPlaylist;
+            });
+            loadPlaylistToPlayer();
+          }
+        } else {
+          player.open(Media(path));
+        }
+      }
+    });
+    // 自动加载上次打开的文件夹
+    getLastOpenedFolder().then((folderPath) {
+      if (folderPath != null && Directory(folderPath).existsSync()) {
+        final directory = Directory(folderPath);
+        final videoExtensions = [
+          'mp4',
+          'avi',
+          'mkv',
+          'mov',
+          'webm',
+          'wmv',
+          'flv',
+          'mpeg',
+          'rmvb',
+          '3gp',
+        ];
+
+        final List<Map<String, String>> newPlaylist = [];
+        try {
+          final files = directory.listSync().whereType<File>().where(
+            (file) {
+              final extension = file.path.split('.').last.toLowerCase();
+              return videoExtensions.contains(extension);
+            },
+          ).toList();
+
+          for (var file in files) {
+            final fileName = file.path.split(Platform.pathSeparator).last;
+            newPlaylist.add({'title': fileName, 'url': file.path});
+          }
+
+          if (newPlaylist.isNotEmpty) {
+            setState(() {
+              playlist.clear();
+              playlist.addAll(newPlaylist);
+              currentIndex = 0;
+            });
+            player.stop();
+            loadPlaylistToPlayer();
+          }
+        } catch (e) {
+          Fluttertoast.showToast(msg: '加载文件夹失败: $e');
+        }
+      }
+    });
     super.initState();
   }
 
@@ -78,6 +141,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     player.dispose();
     _scrollController.dispose(); // 释放控制器资源
     super.dispose();
+  }
+
+  Future<void> saveLastOpenedPath(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_opened_path', path);
+  }
+
+  Future<String?> getLastOpenedPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('last_opened_path');
+  }
+
+  Future<void> saveLastOpenedFolder(String folderPath) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_opened_folder', folderPath);
+  }
+
+  Future<String?> getLastOpenedFolder() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('last_opened_folder');
   }
 
   /// 解析 m3u 文件内容并返回标题与链接列表
@@ -193,6 +276,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       final file = result!.files.first;
 
       if (file.path != null && file.extension == 'm3u') {
+        await saveLastOpenedPath(file.path!);
         try {
           final content = await File(file.path!).readAsString();
           final parsedPlaylist = parseM3U(content);
@@ -269,6 +353,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     await Permission.storage.request();
     final result = await FilePicker.platform.getDirectoryPath();
     if (result != null) {
+      await saveLastOpenedFolder(result);
+
       final directory = Directory(result);
       // 支持的视频格式
       final videoExtensions = [

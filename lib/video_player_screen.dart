@@ -474,6 +474,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       return ListTile(
                         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
                         selected: currentIndex == index, // 检查当前索引是否选中
+                        autofocus: currentIndex == index,
                         selectedTileColor: Colors.black12.withAlpha(20), // 选中时的背景颜色
                         selectedColor: Colors.blue,
                         onTap: () {

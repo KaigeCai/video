@@ -11,11 +11,6 @@ Future<void> main() async {
   MediaKit.ensureInitialized();
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
-    WindowOptions windowOptions = WindowOptions(fullScreen: true);
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
   }
   runApp(const VideoPlayerApp());
 }

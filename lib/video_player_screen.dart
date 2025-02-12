@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flash/flash.dart';
+import 'package:flash/flash_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
@@ -44,6 +45,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   int screenWidth = 0;
   int screenHeight = 0;
+
+  int currentAspectRatioIndex = 0;
+  final List<double> aspectRatios = [
+    16 / 9, // 16:9
+    4 / 3, // 4:3
+    16 / 10, // 16:10
+  ];
+  final List<String> aspectRatiosTxT = ['16:9', '4:3', '16:10']; // 直接存储字符串
 
   @override
   void initState() {
@@ -129,7 +138,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             loadPlaylistToPlayer();
           }
         } catch (e) {
-          Fluttertoast.showToast(msg: '加载文件夹失败: $e');
+          toast('加载文件夹失败$e');
+          debugPrint('加载文件夹失败$e');
         }
       }
     });
@@ -141,6 +151,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     player.dispose();
     _scrollController.dispose(); // 释放控制器资源
     super.dispose();
+  }
+
+  void toast(String msg) {
+    context.showFlash<bool>(
+      duration: Duration(milliseconds: 800),
+      builder: (context, controller) => FlashBar(
+        controller: controller,
+        content: Text(msg),
+      ),
+    );
   }
 
   Future<void> saveLastOpenedPath(String path) async {
@@ -224,21 +244,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       final filePath = '$directoryPath/screenshot_${DateTime.now().millisecondsSinceEpoch}.png';
       final file = File(filePath);
       await file.writeAsBytes(screenshot);
-
       // 提示保存成功
-      debugPrint('Screenshot saved to $filePath');
-      // 显示 Toast 消息
-      Fluttertoast.showToast(
-        msg: 'Screenshot saved to $filePath', // 显示的消息
-        toastLength: Toast.LENGTH_SHORT, // Toast 显示时长，短暂
-        gravity: ToastGravity.BOTTOM, // 显示位置：底部
-        timeInSecForIosWeb: 1, // iOS Web平台的显示时间
-        backgroundColor: Colors.black, // 背景颜色
-        textColor: Colors.white, // 文本颜色
-        fontSize: 16.0, // 字体大小
-      );
+      toast('截图保存到：$filePath');
+      debugPrint('截图保存到：$filePath');
     } catch (e) {
-      debugPrint('Failed to save screenshot: $e');
+      toast('截图保存失败: $e');
+      debugPrint('截图保存失败: $e');
     }
   }
 
@@ -286,10 +297,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             });
             loadPlaylistToPlayer(); // 加载到 Player 的播放列表
           } else {
-            Fluttertoast.showToast(msg: '播放列表为空或解析失败');
+            showFlash(
+              context: context,
+              builder: (context, controller) {
+                return Flash(
+                  controller: controller,
+                  child: Text('播放列表为空或解析失败'),
+                );
+              },
+            );
+            toast('播放列表为空或解析失败');
+            debugPrint('播放列表为空或解析失败');
           }
         } catch (e) {
-          Fluttertoast.showToast(msg: '解析 m3u 文件失败: $e');
+          toast('解析 m3u 文件失败: $e');
+          debugPrint('解析 m3u 文件失败: $e');
         }
       } else {
         await player.open(Media(file.path!)); // 非 m3u 文件直接播放
@@ -398,28 +420,30 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           player.stop();
           loadPlaylistToPlayer(); // 加载新的播放列表到 Player
         } else {
-          Fluttertoast.showToast(msg: '未找到支持的视频文件');
+          toast('未找到支持的视频文件');
+          debugPrint('未找到支持的视频文件');
         }
       } catch (e) {
-        Fluttertoast.showToast(msg: '加载文件夹失败: $e');
+        toast('加载文件夹失败:$e');
+        debugPrint('加载文件夹失败:$e');
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedAspect = aspectRatios[currentAspectRatioIndex];
     return Scaffold(
       appBar: AppBar(
-        leading: ValueListenableBuilder<VideoControllerConfiguration>(
-          valueListenable: configuration,
-          builder: (context, value, _) => TextButton(
-            onPressed: () {
-              configuration.value = VideoControllerConfiguration(
-                enableHardwareAcceleration: !value.enableHardwareAcceleration,
-              );
-            },
-            child: Text(value.enableHardwareAcceleration ? '硬件加速' : '软件加速'),
-          ),
+        leading: IconButton(
+          tooltip: '画面比例',
+          onPressed: () {
+            setState(() {
+              currentAspectRatioIndex = (currentAspectRatioIndex + 1) % aspectRatios.length;
+            });
+            toast(aspectRatiosTxT[currentAspectRatioIndex]);
+          },
+          icon: const Icon(Icons.aspect_ratio),
         ),
         actions: [
           IconButton(
@@ -521,6 +545,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       ),
       body: Video(
         controller: controller,
+        aspectRatio: selectedAspect,
         onEnterFullscreen: () async {
           if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
             await windowManager.setFullScreen(true);

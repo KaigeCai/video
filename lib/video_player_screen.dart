@@ -6,6 +6,7 @@ import 'package:flash/flash.dart';
 import 'package:flash/flash_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http show get;
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
@@ -57,6 +58,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     _scrollController = ScrollController(initialScrollOffset: scrollOffset);
+
+    player.stream.error.listen((error) {
+      player.stop(); // 停止播放
+      toast('播放失败: ${error.replaceAll('\n', ' ')}'); // 显示错误信息
+    });
 
     // 监听视频宽度变化
     player.stream.width.listen((width) {
@@ -161,6 +167,30 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         content: Text(msg),
       ),
     );
+  }
+
+  // 检测 M3U8 播放链接是否有效
+  Future<bool> isM3u8LinkValid(String link) async {
+    try {
+      final response = await http.get(Uri.parse(link));
+      return response.statusCode == 200;
+    } catch (e) {
+      player.stop();
+      toast("检测链接失败: $link, 错误: $e");
+      return false;
+    }
+  }
+
+  /// 检测 URL 是否有效
+  bool isUrlValid(String link) {
+    try {
+      final uri = Uri.parse(link);
+      return uri.hasScheme && uri.hasAuthority;
+    } catch (e) {
+      player.stop();
+      toast("无效的 URL: $link, 错误: $e");
+      return false;
+    }
   }
 
   Future<void> saveLastOpenedPath(String path) async {
@@ -352,10 +382,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (key.currentState!.validate()) {
-                        player.open(Media(src.text));
                         Navigator.of(context).maybePop();
+                        player.open(Media(src.text));
+                        isUrlValid(src.text);
+                        await isM3u8LinkValid(src.text);
                       }
                     },
                     child: const Text('播放'),
@@ -455,6 +487,40 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             tooltip: '打开链接',
             onPressed: () => showURIPicker(context, player),
             icon: const Icon(Icons.link),
+          ),
+          IconButton(
+            tooltip: '视频详情',
+            onPressed: () {
+              final width = player.state.width;
+              final height = player.state.height;
+              final fps = 50;
+              String resolutionInfo = '正在获取...';
+              setState(() {
+                resolutionInfo = width != null && height != null ? '${width}x$height' : '未知分辨率';
+              });
+
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('视频详情'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('分辨率: $resolutionInfo'),
+                      Text('帧率: $fps'),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('关闭'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            icon: const Icon(Icons.info_outline),
           ),
           IconButton(
             tooltip: '截图',

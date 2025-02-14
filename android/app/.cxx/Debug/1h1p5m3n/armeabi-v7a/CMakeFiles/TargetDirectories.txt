@@ -1,0 +1,2 @@
+C:/Users/Administrator/coding/video-player/android/app/.cxx/Debug/1h1p5m3n/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/Administrator/coding/video-player/android/app/.cxx/Debug/1h1p5m3n/armeabi-v7a/CMakeFiles/rebuild_cache.dir

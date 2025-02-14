@@ -1,0 +1,2 @@
+C:/Users/Administrator/coding/video-player/android/app/.cxx/Debug/1h1p5m3n/x86/CMakeFiles/edit_cache.dir
+C:/Users/Administrator/coding/video-player/android/app/.cxx/Debug/1h1p5m3n/x86/CMakeFiles/rebuild_cache.dir
